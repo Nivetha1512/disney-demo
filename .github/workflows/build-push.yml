@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch AWS creds from Vault
+      - name: Fetch short-lived AWS creds from Vault
         id: vault
         uses: hashicorp/vault-action@v3
         with:
@@ -30,8 +30,9 @@ jobs:
           path: jwt-github
           role: ci-github-role
           secrets: |
-            demo1-kv/data/ci/aws access_key_id | AWS_ACCESS_KEY_ID ;
-            demo1-kv/data/ci/aws secret_access_key | AWS_SECRET_ACCESS_KEY
+            aws-ci/creds/ci-ecr-push access_key | AWS_ACCESS_KEY_ID ;
+            aws-ci/creds/ci-ecr-push secret_key | AWS_SECRET_ACCESS_KEY ;
+            aws-ci/creds/ci-ecr-push security_token | AWS_SESSION_TOKEN
 
       - name: Login to ECR
         run: |
