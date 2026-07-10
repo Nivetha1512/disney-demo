@@ -41,6 +41,7 @@ jobs:
 
       - name: Build and push image
         run: |
-          IMAGE="${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
-          docker build -t "$IMAGE" ci-cd/app
-          docker push "$IMAGE"
+          REPO="${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}"
+          docker build -t "$REPO:${{ github.sha }}" -t "$REPO:latest" ci-cd/app
+          docker push "$REPO:${{ github.sha }}"
+          docker push "$REPO:latest"
