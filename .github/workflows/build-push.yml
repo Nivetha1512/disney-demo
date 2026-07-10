@@ -1,5 +1,8 @@
-# Set these as repo variables under Settings > Secrets and variables >
-# Actions > Variables (none of these are secrets):
+# Canonical copy of the workflow for this demo. The actual repo hosting the
+# app is https://github.com/Nivetha1512/disney-demo — copy this file to
+# .github/workflows/build-push.yml there (along with ci-cd/app/) and set the
+# repo variables below under Settings > Secrets and variables > Actions >
+# Variables (none of these are secrets, so repo variables, not secrets):
 #   VAULT_ADDR, VAULT_NAMESPACE, AWS_REGION, AWS_ACCOUNT_ID, ECR_REPOSITORY
 name: Build and Push to ECR via Vault (OIDC)
 
@@ -17,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch short-lived AWS creds from Vault
+      - name: Fetch AWS creds from Vault
         id: vault
         uses: hashicorp/vault-action@v3
         with:
@@ -27,9 +30,8 @@ jobs:
           path: jwt-github
           role: ci-github-role
           secrets: |
-            aws-ci/creds/ci-ecr-push access_key | AWS_ACCESS_KEY_ID ;
-            aws-ci/creds/ci-ecr-push secret_key | AWS_SECRET_ACCESS_KEY ;
-            aws-ci/creds/ci-ecr-push security_token | AWS_SESSION_TOKEN
+            demo1-kv/data/ci/aws access_key_id | AWS_ACCESS_KEY_ID ;
+            demo1-kv/data/ci/aws secret_access_key | AWS_SECRET_ACCESS_KEY
 
       - name: Login to ECR
         run: |
@@ -40,5 +42,5 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE="${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
-          docker build -t "$IMAGE" app
+          docker build -t "$IMAGE" ci-cd/app
           docker push "$IMAGE"
