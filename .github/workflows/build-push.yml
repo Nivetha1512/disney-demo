@@ -1,9 +1,16 @@
-# Canonical copy of the workflow for this demo. The actual repo hosting the
-# app is https://github.com/Nivetha1512/disney-demo — copy this file to
-# .github/workflows/build-push.yml there (along with ci-cd/app/) and set the
-# repo variables below under Settings > Secrets and variables > Actions >
-# Variables (none of these are secrets, so repo variables, not secrets):
-#   VAULT_ADDR, VAULT_NAMESPACE, AWS_REGION, AWS_ACCOUNT_ID, ECR_REPOSITORY
+# On push to main: authenticates to Vault via GitHub OIDC (JWT auth), pulls
+# short-lived AWS credentials from the aws-ci secrets engine, builds the app
+# image and pushes it to ECR tagged with both the commit SHA and "latest",
+# then authenticates to Vault a second time for scoped, short-lived EKS
+# access and deploys that same commit-SHA image to the cluster.
+#
+# Canonical copy for this demo — the repo that actually runs it is
+# https://github.com/Nivetha1512/disney-demo. To deploy there, copy this file
+# to .github/workflows/build-push.yml (along with ci-cd/app/ and k8s/) and
+# set these as repo variables (Settings > Secrets and variables > Actions >
+# Variables — none of these are secrets):
+#   VAULT_ADDR, VAULT_NAMESPACE, AWS_REGION, AWS_ACCOUNT_ID, ECR_REPOSITORY,
+#   EKS_CLUSTER_NAME, K8S_NAMESPACE, K8S_SERVICE_ACCOUNT
 name: Build and Push to ECR via Vault (OIDC)
 
 on:
@@ -28,7 +35,9 @@ jobs:
           namespace: ${{ vars.VAULT_NAMESPACE }}
           method: jwt
           path: jwt-github
+          #role is where isolation happens
           role: ci-github-role
+          #calling AWS Secrets Engine at the aws-ci path 
           secrets: |
             aws-ci/creds/ci-ecr-push access_key | AWS_ACCESS_KEY_ID ;
             aws-ci/creds/ci-ecr-push secret_key | AWS_SECRET_ACCESS_KEY ;
@@ -46,3 +55,41 @@ jobs:
           docker build -t "$REPO:${{ github.sha }}" -t "$REPO:latest" ci-cd/app
           docker push "$REPO:${{ github.sha }}"
           docker push "$REPO:latest"
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch short-lived EKS deploy creds from Vault
+        id: vault
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ vars.VAULT_ADDR }}
+          namespace: ${{ vars.VAULT_NAMESPACE }}
+          method: jwt
+          path: jwt-github
+          role: ci-github-role
+          # Same identity as the build job, second task — see aws-ci/creds/ci-eks-deploy
+          secrets: |
+            aws-ci/creds/ci-eks-deploy access_key | AWS_ACCESS_KEY_ID ;
+            aws-ci/creds/ci-eks-deploy secret_key | AWS_SECRET_ACCESS_KEY ;
+            aws-ci/creds/ci-eks-deploy security_token | AWS_SESSION_TOKEN
+
+      - name: Point kubectl at the cluster
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ vars.EKS_CLUSTER_NAME }} \
+            --region ${{ vars.AWS_REGION }}
+
+      - name: Apply app manifests
+        env:
+          VAULT_ADDR: ${{ vars.VAULT_ADDR }}
+          VAULT_NAMESPACE: ${{ vars.VAULT_NAMESPACE }}
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+          K8S_SERVICE_ACCOUNT: ${{ vars.K8S_SERVICE_ACCOUNT }}
+        run: |
+          export IMAGE="${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
+          bash k8s/apply-manifests.sh
+

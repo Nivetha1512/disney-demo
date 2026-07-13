@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      serviceAccountName: demo-serviceaccount
+      containers:
+        - name: app
+          image: "${IMAGE}"
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: db-secret
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080

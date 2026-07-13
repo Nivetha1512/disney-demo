@@ -1,0 +1,12 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: vault-auth
+spec:
+  vaultConnectionRef: vault-connection
+  namespace: "${VAULT_NAMESPACE}"
+  method: kubernetes
+  mount: kubernetes-eks
+  kubernetes:
+    role: demo-app-role
+    serviceAccount: "${K8S_SERVICE_ACCOUNT}"
