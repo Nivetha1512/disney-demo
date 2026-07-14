@@ -11,6 +11,14 @@ def healthz():
     return {"status": "ok", "db_creds_injected": creds_present}
 
 
+@app.get("/debug/creds")
+def debug_creds():
+    return {
+        "username": os.environ.get("username"),
+        "password": os.environ.get("password"),
+    }
+
+
 @app.get("/")
 def index():
     return "demo1: secure the pipeline\n"
