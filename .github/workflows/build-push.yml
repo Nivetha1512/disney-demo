@@ -11,7 +11,7 @@
 # Variables — none of these are secrets):
 #   VAULT_ADDR, VAULT_NAMESPACE, AWS_REGION, AWS_ACCOUNT_ID, ECR_REPOSITORY,
 #   EKS_CLUSTER_NAME, K8S_NAMESPACE, K8S_SERVICE_ACCOUNT
-#livedemo
+#livedemo2
 name: Build and Push to ECR via Vault (OIDC)
 
 on:
