@@ -1,2 +1,2 @@
 # disney-demo
-Demoing Kubernetes and CI/CD use case for Disney
+Demoing Kubernetes VSO, GHA, Dynamic Creds
