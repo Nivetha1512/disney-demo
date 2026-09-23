@@ -1,2 +1,2 @@
-# disney-demo
+# Demo
 Demoing Kubernetes VSO, GHA, Dynamic Creds
